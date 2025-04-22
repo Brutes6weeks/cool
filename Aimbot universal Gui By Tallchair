@@ -1,0 +1,100 @@
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+
+-- GUI Setup
+local screenGui = Instance.new("ScreenGui", LocalPlayer:WaitForChild("PlayerGui"))
+screenGui.Name = "ToggleGUI"
+screenGui.Enabled = false
+
+local mainFrame = Instance.new("Frame", screenGui)
+mainFrame.Size = UDim2.new(0, 200, 0, 150)
+mainFrame.Position = UDim2.new(0.5, -100, 0.5, -75)
+mainFrame.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
+
+local button1 = Instance.new("TextButton", mainFrame)
+button1.Size = UDim2.new(1, 0, 0.5, -5)
+button1.Position = UDim2.new(0, 0, 0, 0)
+button1.Text = "Lock on Player"
+
+local button2 = Instance.new("TextButton", mainFrame)
+button2.Size = UDim2.new(1, 0, 0.5, -5)
+button2.Position = UDim2.new(0, 0, 0.5, 5)
+button2.Text = "ESP Toggle"
+
+-- Toggle GUI with K
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if input.KeyCode == Enum.KeyCode.K and not gameProcessed then
+		screenGui.Enabled = not screenGui.Enabled
+	end
+end)
+
+-- Lock-On Function
+local lockedTarget = nil
+
+button1.MouseButton1Click:Connect(function()
+	for _, player in pairs(Players:GetPlayers()) do
+		if player ~= LocalPlayer and player.Team ~= LocalPlayer.Team then
+			local character = player.Character
+			if character and character:FindFirstChild("HumanoidRootPart") then
+				lockedTarget = character
+				break
+			end
+		end
+	end
+end)
+
+-- Optional: Camera follows locked player
+RunService.RenderStepped:Connect(function()
+	if lockedTarget then
+		local camera = workspace.CurrentCamera
+		camera.CFrame = CFrame.new(camera.CFrame.Position, lockedTarget.HumanoidRootPart.Position)
+	end
+end)
+
+-- ESP Function
+local espEnabled = false
+local espFolder = Instance.new("Folder", workspace)
+espFolder.Name = "ESPFolder"
+
+local function createESP(player)
+	if player == LocalPlayer then return end
+	local head = player.Character and player.Character:FindFirstChild("Head")
+	if head then
+		local tag = Instance.new("BillboardGui", espFolder)
+		tag.Name = player.Name .. "_ESP"
+		tag.Adornee = head
+		tag.Size = UDim2.new(0, 100, 0, 40)
+		tag.AlwaysOnTop = true
+
+		local label = Instance.new("TextLabel", tag)
+		label.Size = UDim2.new(1, 0, 1, 0)
+		label.BackgroundTransparency = 1
+		label.Text = player.Name
+		label.TextColor3 = Color3.new(1, 1, 1)
+		label.TextStrokeTransparency = 0.5
+	end
+end
+
+local function toggleESP()
+	espEnabled = not espEnabled
+	espFolder:ClearAllChildren()
+
+	if espEnabled then
+		for _, player in pairs(Players:GetPlayers()) do
+			createESP(player)
+		end
+	end
+end
+
+button2.MouseButton1Click:Connect(toggleESP)
+
+Players.PlayerAdded:Connect(function(player)
+	player.CharacterAdded:Connect(function()
+		if espEnabled then
+			wait(1)
+			createESP(player)
+		end
+	end)
+end)
